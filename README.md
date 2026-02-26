@@ -32,6 +32,15 @@ A modern graphical user interface for the [Haydee AI Outfit Generator](https://g
 
 *(Note: The app will automatically create a `.env` file next to the `.exe` so you don't have to enter your details every time.)*
 
+### 🔑 Getting a Gemini API Key
+
+1. Go to [Google AI Studio](https://aistudio.google.com/).
+2. Sign in with your Google account.
+3. Click the "Create API key" button.
+4. If prompted, read and accept the terms of service.
+5. Click on "Create API key in new project" (or use an existing project).
+6. Copy the generated key. You will need to paste it into the **Settings** panel of the application.
+
 ## 🛠️ Developer Setup
 
 If you want to contribute or build the application yourself:
