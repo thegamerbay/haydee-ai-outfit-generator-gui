@@ -211,7 +211,7 @@ class HaydeeGUI(ctk.CTk):
             
             self.after(0, lambda: messagebox.showinfo("Done", f"Mod '{mod_name}' generated successfully!"))
         except Exception as e:
-            self.after(0, lambda: messagebox.showerror("Generation Error", str(e)))
+            self.after(0, lambda err=str(e): messagebox.showerror("Generation Error", err))
         finally:
             # Restore UI in main thread
             self.after(0, self._restore_ui)
