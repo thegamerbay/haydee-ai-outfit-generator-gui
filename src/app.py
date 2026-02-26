@@ -43,7 +43,7 @@ class HaydeeGUI(ctk.CTk):
 
         # Path to .env file next to the executable
         self.env_path = Path.cwd() / ".env"
-        load_dotenv(self.env_path)
+        load_dotenv(self.env_path, override=True)
 
         self._build_ui()
         self._load_settings()
