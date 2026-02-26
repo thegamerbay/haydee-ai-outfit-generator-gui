@@ -2,6 +2,9 @@
 
 [![Build Test](https://github.com/thegamerbay/haydee-ai-outfit-generator-gui/actions/workflows/ci.yml/badge.svg)](https://github.com/thegamerbay/haydee-ai-outfit-generator-gui/actions/workflows/ci.yml)
 [![Build and Release EXE](https://github.com/thegamerbay/haydee-ai-outfit-generator-gui/actions/workflows/release.yml/badge.svg)](https://github.com/thegamerbay/haydee-ai-outfit-generator-gui/actions/workflows/release.yml)
+[![Run Tests](https://github.com/thegamerbay/haydee-ai-outfit-generator-gui/actions/workflows/tests.yml/badge.svg)](https://github.com/thegamerbay/haydee-ai-outfit-generator-gui/actions/workflows/tests.yml)
+[![codecov](https://codecov.io/gh/thegamerbay/haydee-ai-outfit-generator-gui/graph/badge.svg?token=YOUR_TOKEN_HERE)](https://codecov.io/gh/thegamerbay/haydee-ai-outfit-generator-gui)
+
 A modern graphical user interface for the [Haydee AI Outfit Generator](https://github.com/thegamerbay/haydee-ai-outfit-generator) library. Easily generate custom outfits for Haydee without messing with terminals or environment variables!
 
 ## ✨ Features
@@ -37,8 +40,8 @@ If you want to contribute or build the application yourself:
 
 1. Clone this repository:
    ```bash
-   git clone https://github.com/yourusername/haydee-outfit-gui.git
-   cd haydee-outfit-gui
+   git clone https://github.com/thegamerbay/haydee-ai-outfit-generator-gui.git
+   cd haydee-ai-outfit-generator-gui
    ```
 
 2. Install dependencies:
@@ -61,6 +64,20 @@ python build.py
 ```
 
 After the build completes, your application will be available in the `dist/` folder as `HaydeeOutfitGenerator.exe`.
+
+### Running Tests
+
+This project includes automated GUI tests written with `pytest` and `pytest-mock`.
+
+1. Install the testing dependencies:
+   ```bash
+   pip install -r requirements-dev.txt
+   ```
+
+2. Run the tests:
+   ```bash
+   pytest tests/
+   ```
 
 ## 📄 License
 
