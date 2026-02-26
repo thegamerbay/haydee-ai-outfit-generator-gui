@@ -8,6 +8,8 @@
 
 A modern graphical user interface for the [Haydee AI Outfit Generator](https://github.com/thegamerbay/haydee-ai-outfit-generator) library. Easily generate custom outfits for Haydee without messing with terminals or environment variables!
 
+### 📥 [Download the latest HaydeeOutfitGenerator.exe here](https://github.com/thegamerbay/haydee-ai-outfit-generator-gui/releases)
+
 ![GUI Preview](assets/gui.png)
 
 ## ✨ Features
@@ -19,7 +21,7 @@ A modern graphical user interface for the [Haydee AI Outfit Generator](https://g
 
 ## 🚀 Quick Start (For Users)
 
-1. Download the latest `HaydeeOutfitGenerator.exe` release.
+1. [Download the latest `HaydeeOutfitGenerator.exe` release](https://github.com/thegamerbay/haydee-ai-outfit-generator-gui/releases).
 2. Launch the application.
 3. Fill in the **Settings** panel:
    - Your **Gemini API Key**.
