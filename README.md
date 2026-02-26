@@ -7,6 +7,8 @@
 
 A modern graphical user interface for the [Haydee AI Outfit Generator](https://github.com/thegamerbay/haydee-ai-outfit-generator) library. Easily generate custom outfits for Haydee without messing with terminals or environment variables!
 
+![GUI Preview](assets/gui.png)
+
 ## ✨ Features
 
 - **Modern Dark Interface**: Built with `CustomTkinter` for a sleek, game-themed appearance.
