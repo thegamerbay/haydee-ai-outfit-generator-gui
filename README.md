@@ -10,7 +10,8 @@ A modern graphical user interface for the [Haydee AI Outfit Generator](https://g
 
 ### 📥 [Download the latest HaydeeOutfitGenerator.exe here](https://github.com/thegamerbay/haydee-ai-outfit-generator-gui/releases)
 
-![GUI Preview](assets/gui.png)
+![GUI Generate Outfit Preview](assets/gui-generate-outfit.png)
+![GUI Group Mods Preview](assets/gui-group-mods.png)
 
 ## ✨ Features
 
