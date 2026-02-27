@@ -183,7 +183,7 @@ class HaydeeGUI(ctk.CTk):
         self.entry_author.insert(0, self.config_manager.config.get("author_name", ""))
         self.combo_res.set(self.config_manager.config.get("image_resolution", "4K"))
 
-    def _save_settings(self):
+    def _save_settings(self, show_success=True):
         api_key = self.entry_api_key.get().strip()
         haydee_path = self.entry_path.get().strip()
         author = self.entry_author.get().strip()
@@ -199,11 +199,12 @@ class HaydeeGUI(ctk.CTk):
         self.config_manager.config["image_resolution"] = res
         self.config_manager.save()
 
-        messagebox.showinfo("Success", "Settings saved successfully!")
+        if show_success:
+            messagebox.showinfo("Success", "Settings saved successfully!")
 
     def _prepare_for_task(self):
         """Helper to save config and block UI before a task"""
-        self._save_settings()
+        self._save_settings(show_success=False)
         if not self.config_manager.config["gemini_api_key"] or not self.config_manager.config["haydee_path"]:
              return False
 
