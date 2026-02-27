@@ -4,15 +4,14 @@ from pathlib import Path
 
 class ConfigManager:
     def __init__(self):
-        # Get path to AppData/Local on Windows (or ~/.local/share on Linux)
         app_data = os.getenv('LOCALAPPDATA', os.path.expanduser('~'))
         self.config_dir = Path(app_data) / "HaydeeOutfitGenerator"
         self.config_file = self.config_dir / "settings.json"
         
-        # Default settings
         self.config = {
             "gemini_api_key": "",
             "haydee_path": "",
+            "author_name": "",
             "image_resolution": "4K"
         }
         self.load()

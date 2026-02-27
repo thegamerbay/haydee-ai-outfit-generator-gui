@@ -15,8 +15,9 @@ A modern graphical user interface for the [Haydee AI Outfit Generator](https://g
 ## ✨ Features
 
 - **Modern Dark Interface**: Built with `CustomTkinter` for a sleek, game-themed appearance.
-- **No Terminal Required**: Configures environment variables and handles logging automatically.
-- **Asynchronous Generation**: The UI remains responsive while the outfit is being generated via AI.
+- **Two Unique Workflows**: Seamlessly switch between generating brand new outfits via AI and grouping your existing mods into single multi-mods.
+- **No Terminal Required**: Configures all paths and handles logging automatically.
+- **Asynchronous Processing**: The UI remains responsive while the outfit is being generated via AI or while mods are being grouped.
 - **Standalone Executable**: Easily package the app into a single `.exe` file that any Windows user can run out-of-the-box.
 
 ## 🚀 Quick Start (For Users)
@@ -26,11 +27,14 @@ A modern graphical user interface for the [Haydee AI Outfit Generator](https://g
 3. Fill in the **Settings** panel:
    - Your **Gemini API Key**.
    - Path to your **Haydee** game installation directory.
+   - Your **Author Name** (Optional, applied to all generated or grouped mods).
 4. Click **Save Settings**.
-5. In the **Mod Generation** panel, enter a unique mod name and a descriptive style prompt.
-6. Click **Generate Outfit** and watch the magic happen in the built-in console window!
+5. Choose your workflow tab:
+   - **✨ Generate Outfit**: Enter a unique mod name and a descriptive style prompt to create a new outfit.
+   - **📦 Group Mods**: Combine multiple existing mods into one multi-mod. Enter the new multi-mod name, the source mods to group (e.g., `red, green, blue`), and the slot category (e.g., `color`).
+6. Click **Start Generation** or **Group Outfits** and watch the magic happen in the built-in console window!
 
-*(Note: The app will automatically create a `.env` file next to the `.exe` so you don't have to enter your details every time.)*
+*(Note: The app will automatically save your settings in `AppData/Local/HaydeeOutfitGenerator/settings.json` so you don't have to enter your details every time.)*
 
 ### 🔑 Getting a Gemini API Key
 
