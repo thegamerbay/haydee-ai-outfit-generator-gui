@@ -5,7 +5,7 @@ from pathlib import Path
 import customtkinter as ctk
 from tkinter import filedialog, messagebox
 
-# Прямые импорты из библиотеки
+# Direct imports from the library
 from haydee_outfit_gen.mod_builder import ModBuilder
 from haydee_outfit_gen.gemini_client import GeminiModClient
 from haydee_outfit_gen.image_processor import ImageProcessor
@@ -194,7 +194,7 @@ class HaydeeGUI(ctk.CTk):
 
     def _run_generator_thread(self, mod_name, style):
         try:
-            # Получаем настройки
+            # Get settings
             api_key = self.config_manager.config["gemini_api_key"]
             haydee_path = Path(self.config_manager.config["haydee_path"])
             res = self.config_manager.config["image_resolution"]
@@ -205,20 +205,20 @@ class HaydeeGUI(ctk.CTk):
             if not base_dds.exists():
                 raise FileNotFoundError(f"Base texture not found at {base_dds}. Please verify your game path.")
 
-            # 1. Настройка директории
+            # 1. Directory setup
             builder = ModBuilder(mod_name, outfits_dir=outfits_dir)
             builder.prepare_directory()
 
-            # 2. Временная директория для конвертации
+            # 2. Temporary directory for conversion
             with tempfile.TemporaryDirectory() as temp_dir:
                 temp_path = Path(temp_dir)
                 base_png = temp_path / "base_Suit_D.png"
                 generated_jpg = temp_path / "generated_Suit_D.jpg"
 
-                # 3. Конвертация исходника
+                # 3. Source conversion
                 ImageProcessor.dds_to_png(base_dds, base_png)
 
-                # 4. Генерация Gemini API
+                # 4. Gemini API generation
                 client = GeminiModClient(api_key=api_key, image_resolution=res)
                 client.generate_texture(
                     base_image_path=base_png,
@@ -226,11 +226,11 @@ class HaydeeGUI(ctk.CTk):
                     output_path=generated_jpg
                 )
 
-                # 5. Сохранение обратно в DDS
+                # 5. Save back to DDS
                 final_dds_path = builder.mod_dir / "Suit_D.dds"
                 ImageProcessor.img_to_dds(generated_jpg, final_dds_path, resolution=res)
 
-            # 6. Генерация конфигурационных файлов игры
+            # 6. Generate game config files
             builder.generate_mtl_file()
             builder.generate_outfit_file()
             
