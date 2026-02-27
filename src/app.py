@@ -2,6 +2,7 @@ import threading
 import logging
 import tempfile
 from pathlib import Path
+import webbrowser
 import customtkinter as ctk
 from tkinter import filedialog, messagebox
 
@@ -68,7 +69,14 @@ class HaydeeGUI(ctk.CTk):
         ctk.CTkLabel(self.left_frame, text="⚙️ Settings", font=ctk.CTkFont(size=20, weight="bold")).pack(pady=(20, 20))
 
         # API Key
-        ctk.CTkLabel(self.left_frame, text="Gemini API Key:").pack(anchor="w", padx=20)
+        self.frame_api_label = ctk.CTkFrame(self.left_frame, fg_color="transparent")
+        self.frame_api_label.pack(fill="x", padx=20)
+        
+        ctk.CTkLabel(self.frame_api_label, text="Gemini API Key:").pack(side="left")
+        self.lbl_get_key = ctk.CTkLabel(self.frame_api_label, text="(Get Key Here)", text_color="#1F6AA5", font=ctk.CTkFont(underline=True), cursor="hand2")
+        self.lbl_get_key.pack(side="right")
+        self.lbl_get_key.bind("<Button-1>", lambda e: webbrowser.open_new("https://aistudio.google.com/"))
+        
         self.entry_api_key = ctk.CTkEntry(self.left_frame, show="*", placeholder_text="Paste your key here...")
         self.entry_api_key.pack(fill="x", padx=20, pady=(0, 15))
 
@@ -94,6 +102,13 @@ class HaydeeGUI(ctk.CTk):
         # Save Button
         self.btn_save = ctk.CTkButton(self.left_frame, text="💾 Save Settings", command=self._save_settings)
         self.btn_save.pack(padx=20, pady=(0, 20))
+
+        # Bottom spacer & FAQ Link
+        ctk.CTkFrame(self.left_frame, fg_color="transparent", height=0).pack(fill="y", expand=True)
+        
+        self.lbl_faq = ctk.CTkLabel(self.left_frame, text="❓ Help & FAQ", text_color="#1F6AA5", font=ctk.CTkFont(underline=True), cursor="hand2")
+        self.lbl_faq.pack(side="bottom", pady=20)
+        self.lbl_faq.bind("<Button-1>", lambda e: webbrowser.open_new("https://github.com/thegamerbay/haydee-ai-outfit-generator-gui"))
 
         # === RIGHT PANEL (Workspace) ===
         self.right_frame = ctk.CTkFrame(self)
