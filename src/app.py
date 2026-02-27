@@ -1,15 +1,16 @@
-import os
-import sys
 import threading
 import logging
+import tempfile
 from pathlib import Path
 import customtkinter as ctk
 from tkinter import filedialog, messagebox
 
-# Import your library
-from haydee_outfit_gen.config import settings
-from haydee_outfit_gen.main import main as generate_mod
-from dotenv import set_key, load_dotenv
+# Прямые импорты из библиотеки
+from haydee_outfit_gen.mod_builder import ModBuilder
+from haydee_outfit_gen.gemini_client import GeminiModClient
+from haydee_outfit_gen.image_processor import ImageProcessor
+
+from src.config_manager import ConfigManager
 
 # Setup CustomTkinter appearance
 ctk.set_appearance_mode("Dark")
@@ -32,7 +33,6 @@ class CustomTextHandler(logging.Handler):
         self.textbox.see("end")  # Auto-scroll down
         self.textbox.configure(state="disabled")
 
-
 class HaydeeGUI(ctk.CTk):
     def __init__(self):
         super().__init__()
@@ -41,9 +41,7 @@ class HaydeeGUI(ctk.CTk):
         self.geometry("900x650")
         self.minsize(800, 600)
 
-        # Path to .env file next to the executable
-        self.env_path = Path.cwd() / ".env"
-        load_dotenv(self.env_path, override=True)
+        self.config_manager = ConfigManager()
 
         self._build_ui()
         self._load_settings()
@@ -51,17 +49,17 @@ class HaydeeGUI(ctk.CTk):
 
     def _setup_logging(self):
         """Redirect library logs to our text box"""
-        logger = logging.getLogger("haydee_outfit_gen")
-        logger.setLevel(logging.INFO)
+        self.logger = logging.getLogger("haydee_outfit_gen")
+        self.logger.setLevel(logging.INFO)
         
         # Clear default handlers to avoid duplicates in hidden console
-        if logger.hasHandlers():
-            logger.handlers.clear()
+        if self.logger.hasHandlers():
+            self.logger.handlers.clear()
             
         handler = CustomTextHandler(self.log_console)
         formatter = logging.Formatter('[%(levelname)s] %(message)s')
         handler.setFormatter(formatter)
-        logger.addHandler(handler)
+        self.logger.addHandler(handler)
 
     def _build_ui(self):
         # Grid setup
@@ -142,17 +140,13 @@ class HaydeeGUI(ctk.CTk):
             self.entry_path.insert(0, dir_path)
 
     def _load_settings(self):
-        """Load settings from .env into GUI"""
-        api_key = os.getenv("GEMINI_API_KEY", "")
-        haydee_path = os.getenv("HAYDEE_PATH", "")
-        res = os.getenv("IMAGE_RESOLUTION", "4K")
-
-        self.entry_api_key.insert(0, api_key)
-        self.entry_path.insert(0, haydee_path)
-        self.combo_res.set(res)
+        """Load settings from ConfigManager into GUI"""
+        self.entry_api_key.insert(0, self.config_manager.config.get("gemini_api_key", ""))
+        self.entry_path.insert(0, self.config_manager.config.get("haydee_path", ""))
+        self.combo_res.set(self.config_manager.config.get("image_resolution", "4K"))
 
     def _save_settings(self):
-        """Save GUI settings to .env file"""
+        """Save GUI settings to ConfigManager"""
         api_key = self.entry_api_key.get().strip()
         haydee_path = self.entry_path.get().strip()
         res = self.combo_res.get()
@@ -161,14 +155,10 @@ class HaydeeGUI(ctk.CTk):
             messagebox.showwarning("Warning", "Please fill in both API Key and Game Path.")
             return
 
-        set_key(self.env_path, "GEMINI_API_KEY", api_key)
-        set_key(self.env_path, "HAYDEE_PATH", haydee_path)
-        set_key(self.env_path, "IMAGE_RESOLUTION", res)
-        
-        # Dynamically update library settings in memory
-        settings.gemini_api_key = api_key
-        settings.haydee_path = Path(haydee_path)
-        settings.image_resolution = res
+        self.config_manager.config["gemini_api_key"] = api_key
+        self.config_manager.config["haydee_path"] = haydee_path
+        self.config_manager.config["image_resolution"] = res
+        self.config_manager.save()
 
         messagebox.showinfo("Success", "Settings saved successfully!")
 
@@ -180,12 +170,13 @@ class HaydeeGUI(ctk.CTk):
             messagebox.showerror("Error", "Mod name and style description are required.")
             return
         
-        # Save settings to memory before generation in case user forgot to click "Save"
-        settings.gemini_api_key = self.entry_api_key.get().strip()
-        settings.haydee_path = Path(self.entry_path.get().strip())
-        settings.image_resolution = self.combo_res.get()
+        # Save settings to memory before generation
+        self.config_manager.config["gemini_api_key"] = self.entry_api_key.get().strip()
+        self.config_manager.config["haydee_path"] = self.entry_path.get().strip()
+        self.config_manager.config["image_resolution"] = self.combo_res.get()
+        self.config_manager.save()
 
-        if not settings.gemini_api_key or not str(settings.haydee_path):
+        if not self.config_manager.config["gemini_api_key"] or not self.config_manager.config["haydee_path"]:
              messagebox.showerror("Error", "API Key or Game Path is not configured!")
              return
 
@@ -203,14 +194,51 @@ class HaydeeGUI(ctk.CTk):
 
     def _run_generator_thread(self, mod_name, style):
         try:
-            # Mock CLI arguments
-            sys.argv = ["haydee-gen", "--name", mod_name, "--style", style]
+            # Получаем настройки
+            api_key = self.config_manager.config["gemini_api_key"]
+            haydee_path = Path(self.config_manager.config["haydee_path"])
+            res = self.config_manager.config["image_resolution"]
             
-            # Call main library function
-            generate_mod()
+            outfits_dir = haydee_path / "Outfits"
+            base_dds = outfits_dir / "Haydee" / "Suit_D.dds"
+
+            if not base_dds.exists():
+                raise FileNotFoundError(f"Base texture not found at {base_dds}. Please verify your game path.")
+
+            # 1. Настройка директории
+            builder = ModBuilder(mod_name, outfits_dir=outfits_dir)
+            builder.prepare_directory()
+
+            # 2. Временная директория для конвертации
+            with tempfile.TemporaryDirectory() as temp_dir:
+                temp_path = Path(temp_dir)
+                base_png = temp_path / "base_Suit_D.png"
+                generated_jpg = temp_path / "generated_Suit_D.jpg"
+
+                # 3. Конвертация исходника
+                ImageProcessor.dds_to_png(base_dds, base_png)
+
+                # 4. Генерация Gemini API
+                client = GeminiModClient(api_key=api_key, image_resolution=res)
+                client.generate_texture(
+                    base_image_path=base_png,
+                    style=style,
+                    output_path=generated_jpg
+                )
+
+                # 5. Сохранение обратно в DDS
+                final_dds_path = builder.mod_dir / "Suit_D.dds"
+                ImageProcessor.img_to_dds(generated_jpg, final_dds_path, resolution=res)
+
+            # 6. Генерация конфигурационных файлов игры
+            builder.generate_mtl_file()
+            builder.generate_outfit_file()
             
+            self.logger.info(f"Mod '{mod_name}' generated successfully! You can now test it in Haydee.")
             self.after(0, lambda: messagebox.showinfo("Done", f"Mod '{mod_name}' generated successfully!"))
+            
         except Exception as e:
+            self.logger.error(f"Generation failed: {e}")
             self.after(0, lambda err=str(e): messagebox.showerror("Generation Error", err))
         finally:
             # Restore UI in main thread

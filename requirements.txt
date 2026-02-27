@@ -1,4 +1,3 @@
 customtkinter==5.2.2
-haydee-outfit-generator>=1.0.2
-python-dotenv==1.2.1
+haydee-outfit-generator>=1.1.1
 pyinstaller>=6.11.0

@@ -1,47 +1,42 @@
-import os
 import pytest
-from unittest.mock import MagicMock
-from pathlib import Path
-
-# Set environment variables before importing the application
-os.environ["GEMINI_API_KEY"] = "test_key"
-os.environ["HAYDEE_PATH"] = "C:\\Test\\Path"
-
-from src.app import HaydeeGUI
-from haydee_outfit_gen.config import settings
-
 from unittest.mock import patch
+
+# Mock settings load to avoid creating real AppData files during tests
+@pytest.fixture(autouse=True)
+def mock_config_manager(mocker):
+    # Setup initial mock data
+    mock_config = {
+        "gemini_api_key": "test_key",
+        "haydee_path": "C:\\Test\\Path",
+        "image_resolution": "4K"
+    }
+    
+    # Patch ConfigManager methods
+    mocker.patch("src.config_manager.ConfigManager.load")
+    mocker.patch("src.config_manager.ConfigManager.save")
+    
+    # When ConfigManager is instantiated, inject our mock config
+    def mock_init(self):
+        self.config = mock_config.copy()
+        
+    mocker.patch("src.config_manager.ConfigManager.__init__", new=mock_init)
 
 @pytest.fixture(scope="session", autouse=True)
 def _patch_mainloop():
     with patch("customtkinter.CTk.mainloop"):
         yield
 
-@pytest.fixture(scope="session")
-def base_app():
-    """Fixture to create an application instance once for all tests."""
+from src.app import HaydeeGUI
+
+@pytest.fixture
+def app():
+    """Fixture to create an application instance per test."""
     app_instance = HaydeeGUI()
     yield app_instance
     app_instance.destroy()
 
-@pytest.fixture
-def app(base_app, mocker):
-    """Fixture to clean up and mock functionality per test."""
-    mocker.patch("src.app.set_key") 
-    
-    # Restore base state
-    base_app.entry_api_key.delete(0, "end")
-    base_app.entry_api_key.insert(0, "test_key")
-    base_app.entry_path.delete(0, "end")
-    base_app.entry_path.insert(0, "C:\\Test\\Path")
-    base_app.entry_mod_name.delete(0, "end")
-    base_app.textbox_style.delete("1.0", "end")
-    base_app.btn_generate.configure(state="normal")
-    
-    yield base_app
-
 def test_app_initialization(app):
-    """Verify that the application starts and pulls settings from the environment."""
+    """Verify that the application starts and pulls settings from the ConfigManager."""
     assert app.title() == "Haydee AI Outfit Generator"
     assert app.entry_api_key.get() == "test_key"
     assert app.entry_path.get() == "C:\\Test\\Path"
@@ -63,7 +58,7 @@ def test_save_settings_validation_empty(app, mocker):
 def test_save_settings_success(app, mocker):
     """Verify successful saving of settings."""
     mock_messagebox = mocker.patch("src.app.messagebox.showinfo")
-    mock_set_key = mocker.patch("src.app.set_key")
+    mock_save = mocker.patch.object(app.config_manager, "save")
     
     # Enter new data
     app.entry_api_key.delete(0, "end")
@@ -71,9 +66,9 @@ def test_save_settings_success(app, mocker):
     
     app._save_settings()
     
-    # Check that data was written to the file and updated in library memory
-    assert mock_set_key.call_count == 3
-    assert settings.gemini_api_key == "new_super_secret_key"
+    # Check that data was written to config memory and saved
+    assert mock_save.called
+    assert app.config_manager.config["gemini_api_key"] == "new_super_secret_key"
     mock_messagebox.assert_called_once_with("Success", "Settings saved successfully!")
 
 def test_start_generation_blocks_ui(app, mocker):
