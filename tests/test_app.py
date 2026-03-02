@@ -2,8 +2,8 @@ import pytest
 from unittest.mock import patch
 
 # Mock settings load to avoid creating real AppData files during tests
-@pytest.fixture(autouse=True)
-def mock_config_manager(mocker):
+@pytest.fixture(scope="module", autouse=True)
+def mock_config_manager():
     # Setup initial mock data
     mock_config = {
         "gemini_api_key": "test_key",
@@ -12,15 +12,14 @@ def mock_config_manager(mocker):
         "image_resolution": "4K"
     }
     
-    # Patch ConfigManager methods
-    mocker.patch("src.config_manager.ConfigManager.load")
-    mocker.patch("src.config_manager.ConfigManager.save")
-    
     # When ConfigManager is instantiated, inject our mock config
     def mock_init(self):
         self.config = mock_config.copy()
         
-    mocker.patch("src.config_manager.ConfigManager.__init__", new=mock_init)
+    with patch("src.config_manager.ConfigManager.load"), \
+         patch("src.config_manager.ConfigManager.save"), \
+         patch("src.config_manager.ConfigManager.__init__", new=mock_init):
+        yield
 
 @pytest.fixture(scope="session", autouse=True)
 def _patch_mainloop():
@@ -29,7 +28,7 @@ def _patch_mainloop():
 
 from src.app import HaydeeGUI
 
-@pytest.fixture
+@pytest.fixture(scope="module")
 def app():
     """Fixture to create an application instance per test."""
     app_instance = HaydeeGUI()
@@ -60,6 +59,10 @@ def test_save_settings_success(app, mocker):
     """Verify successful saving of settings including author."""
     mock_messagebox = mocker.patch("src.app.messagebox.showinfo")
     mock_save = mocker.patch.object(app.config_manager, "save")
+    
+    # Re-fill the haydee path that was deleted in previous test
+    app.entry_path.delete(0, "end")
+    app.entry_path.insert(0, "C:\\Test\\Path")
     
     # Enter new data
     app.entry_api_key.delete(0, "end")
@@ -105,3 +108,58 @@ def test_start_grouping_blocks_ui(app, mocker):
     assert app.btn_group.cget("state") == "disabled"
     assert app.btn_generate.cget("state") == "disabled"
     assert mock_thread.called
+
+def test_universal_hotkeys(app, mocker):
+    """Verify that universal hotkeys trigger correct events based on hardware keycodes."""
+    mock_widget = mocker.Mock()
+    # Mock the focus_get method to return our mock widget
+    app.focus_get = mocker.Mock(return_value=mock_widget)
+    
+    class MockEvent:
+        def __init__(self, keysym, keycode):
+            self.keysym = keysym
+            self.keycode = keycode
+            
+    # Test case 1: English layout (should do nothing naturally)
+    event_en = MockEvent(keysym='c', keycode=67)
+    app._universal_ctrl_handler(event_en)
+    mock_widget.event_generate.assert_not_called()
+    
+    # Test case 2: Non-English layout, Cut (X = 88)
+    event_ru_x = MockEvent(keysym='ч', keycode=88)
+    app._universal_ctrl_handler(event_ru_x)
+    mock_widget.event_generate.assert_called_once_with('<<Cut>>')
+    mock_widget.event_generate.reset_mock()
+    
+    # Test case 3: Non-English layout, Copy (C = 67)
+    event_ru_c = MockEvent(keysym='с', keycode=67)
+    app._universal_ctrl_handler(event_ru_c)
+    mock_widget.event_generate.assert_called_once_with('<<Copy>>')
+    mock_widget.event_generate.reset_mock()
+    
+    # Test case 4: Non-English layout, Paste (V = 86)
+    event_ru_v = MockEvent(keysym='м', keycode=86)
+    app._universal_ctrl_handler(event_ru_v)
+    mock_widget.event_generate.assert_called_once_with('<<Paste>>')
+    mock_widget.event_generate.reset_mock()
+    
+    # Test case 5: Non-English layout, Undo (Z = 90)
+    event_ru_z = MockEvent(keysym='я', keycode=90)
+    app._universal_ctrl_handler(event_ru_z)
+    mock_widget.event_generate.assert_called_once_with('<<Undo>>')
+    mock_widget.event_generate.reset_mock()
+    
+    # Test case 6: Non-English layout, Select All (A = 65) with Entry-like widget
+    event_ru_a = MockEvent(keysym='ф', keycode=65)
+    mock_entry_widget = mocker.Mock(spec=['select_range', 'icursor'])
+    app.focus_get = mocker.Mock(return_value=mock_entry_widget)
+    app._universal_ctrl_handler(event_ru_a)
+    mock_entry_widget.select_range.assert_called_once_with(0, 'end')
+    mock_entry_widget.icursor.assert_called_once_with('end')
+    
+    # Test case 7: Non-English layout, Select All (A = 65) with Text-like widget
+    mock_text_widget = mocker.Mock(spec=['tag_add', 'mark_set'])
+    app.focus_get = mocker.Mock(return_value=mock_text_widget)
+    app._universal_ctrl_handler(event_ru_a)
+    mock_text_widget.tag_add.assert_called_once_with('sel', '1.0', 'end')
+    mock_text_widget.mark_set.assert_called_once_with('insert', 'end')

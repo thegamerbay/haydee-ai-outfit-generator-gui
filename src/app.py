@@ -44,6 +44,43 @@ class HaydeeGUI(ctk.CTk):
         self._build_ui()
         self._load_settings()
         self._setup_logging()
+        
+        # Setup universal hotkeys fix for non-English layouts
+        self._setup_universal_hotkeys()
+
+    def _setup_universal_hotkeys(self):
+        """Binds Ctrl+C/V/X/Z/A handling to physical keycodes (supports any language layout)."""
+        self.bind('<Control-KeyPress>', self._universal_ctrl_handler)
+
+    def _universal_ctrl_handler(self, event):
+        # If the current layout is English, tkinter natively handles these events.
+        # We interrupt execution to avoid double-copying or double-pasting.
+        if event.keysym.lower() in ['c', 'v', 'x', 'z', 'a']:
+            return
+
+        # Get the currently focused widget
+        widget = self.focus_get()
+        if not widget:
+            return
+
+        # Check the hardware keycode for Windows:
+        # 86 = V, 67 = C, 88 = X, 90 = Z, 65 = A
+        if event.keycode == 86:
+            widget.event_generate('<<Paste>>')
+        elif event.keycode == 67:
+            widget.event_generate('<<Copy>>')
+        elif event.keycode == 88:
+            widget.event_generate('<<Cut>>')
+        elif event.keycode == 90:
+            widget.event_generate('<<Undo>>')
+        elif event.keycode == 65:
+            # Select All: the method differs between entry widgets and text widgets
+            if hasattr(widget, 'select_range'):
+                widget.select_range(0, 'end')
+                widget.icursor('end')
+            elif hasattr(widget, 'tag_add'):
+                widget.tag_add('sel', '1.0', 'end')
+                widget.mark_set('insert', 'end')
 
     def _setup_logging(self):
         self.logger = logging.getLogger("haydee_outfit_gen")
