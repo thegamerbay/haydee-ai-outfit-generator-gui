@@ -12,7 +12,8 @@ class ConfigManager:
             "gemini_api_key": "",
             "haydee_path": "",
             "author_name": "",
-            "image_resolution": "4K"
+            "image_resolution": "4K",
+            "model_name": "gemini-3.1-flash-image-preview"
         }
         self.load()
 

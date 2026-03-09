@@ -9,7 +9,8 @@ def mock_config_manager():
         "gemini_api_key": "test_key",
         "haydee_path": "C:\\Test\\Path",
         "author_name": "TestAuthor",
-        "image_resolution": "4K"
+        "image_resolution": "4K",
+        "model_name": "test_model_v1"
     }
     
     # When ConfigManager is instantiated, inject our mock config
@@ -41,6 +42,7 @@ def test_app_initialization(app):
     assert app.entry_api_key.get() == "test_key"
     assert app.entry_path.get() == "C:\\Test\\Path"
     assert app.entry_author.get() == "TestAuthor"
+    assert app.entry_model.get() == "test_model_v1"
 
 def test_save_settings_validation_empty(app, mocker):
     """Verify that empty fields trigger a warning dialog."""
@@ -56,7 +58,7 @@ def test_save_settings_validation_empty(app, mocker):
     mock_messagebox.assert_called_once_with("Warning", "Please fill in both API Key and Game Path.")
 
 def test_save_settings_success(app, mocker):
-    """Verify successful saving of settings including author."""
+    """Verify successful saving of settings including author and model_name."""
     mock_messagebox = mocker.patch("src.app.messagebox.showinfo")
     mock_save = mocker.patch.object(app.config_manager, "save")
     
@@ -70,6 +72,9 @@ def test_save_settings_success(app, mocker):
     
     app.entry_author.delete(0, "end")
     app.entry_author.insert(0, "NewAuthor")
+
+    app.entry_model.delete(0, "end")
+    app.entry_model.insert(0, "gemini-4.0-pro")
     
     app._save_settings()
     
@@ -77,22 +82,59 @@ def test_save_settings_success(app, mocker):
     assert mock_save.called
     assert app.config_manager.config["gemini_api_key"] == "new_super_secret_key"
     assert app.config_manager.config["author_name"] == "NewAuthor"
+    assert app.config_manager.config["model_name"] == "gemini-4.0-pro"
     mock_messagebox.assert_called_once_with("Success", "Settings saved successfully!")
 
+def test_start_generation_validation(app, mocker):
+    """Verify validation logic for start_generation with various skip checkboxes."""
+    mock_messagebox_error = mocker.patch("src.app.messagebox.showerror")
+    mock_messagebox_info = mocker.patch("src.app.messagebox.showinfo")
+
+    # Clear mod name
+    app.entry_mod_name.delete(0, "end")
+    app._start_generation()
+    mock_messagebox_error.assert_called_with("Error", "Mod name is required.")
+
+    # Fill mod name
+    app.entry_mod_name.insert(0, "ValidMod")
+
+    # Set all checkboxes to off
+    app.check_gen_d.deselect()
+    app.check_gen_s.deselect()
+    app.check_gen_n.deselect()
+    app._start_generation()
+    mock_messagebox_info.assert_called_with("Info", "Nothing to generate. All options are disabled.")
+
+    # Set gen_d on but style empty
+    app.check_gen_d.select()
+    app.textbox_style.delete("1.0", "end")
+    app._start_generation()
+    mock_messagebox_error.assert_called_with("Error", "Style description is required to generate a new Diffuse texture.")
+
 def test_start_generation_blocks_ui(app, mocker):
-    """Verify that starting generation blocks the UI elements."""
+    """Verify that starting generation blocks the UI elements and passes correct args."""
     mock_thread = mocker.patch("src.app.threading.Thread")
     
     # Fill in required fields for Generation
+    app.entry_mod_name.delete(0, "end")
     app.entry_mod_name.insert(0, "TestMod")
+    app.textbox_style.delete("1.0", "end")
     app.textbox_style.insert("1.0", "Cyberpunk style")
+
+    app.check_gen_d.select()
+    app.check_gen_s.deselect()
+    app.check_gen_n.select()
     
     app._start_generation()
     
+    # Check that thread was started with correct arguments
+    mock_thread.assert_called_once()
+    _, kwargs = mock_thread.call_args
+    assert kwargs['args'] == ("TestMod", "Cyberpunk style", True, False, True)
+
     # Check that the button is disabled
     assert app.btn_generate.cget("state") == "disabled"
     assert app.btn_group.cget("state") == "disabled"
-    assert mock_thread.called
 
 def test_start_grouping_blocks_ui(app, mocker):
     """Verify that starting grouping blocks the UI elements."""
