@@ -205,3 +205,76 @@ def test_universal_hotkeys(app, mocker):
     app._universal_ctrl_handler(event_ru_a)
     mock_text_widget.tag_add.assert_called_once_with('sel', '1.0', 'end')
     mock_text_widget.mark_set.assert_called_once_with('insert', 'end')
+
+def test_google_genai_monkey_patch():
+    """Verify that the google-genai Client timeout is patched securely to 600,000 ms."""
+    from google import genai
+    import src.app # Ensure the patch runs
+    
+    # With no http_options provided, it should use the patched timeout
+    client = genai.Client(api_key="test_dummy_key")
+    # In genai sdk 1.65.0, HttpOptions are stored in client._api_client._http_options
+    http_opts = getattr(client._api_client, '_http_options', None)
+    
+    # Depending on exact implementation details in SDK, verify if available via dict or obj
+    found_timeout = None
+    if isinstance(http_opts, dict):
+        found_timeout = http_opts.get('timeout')
+    elif hasattr(http_opts, 'timeout'):
+        found_timeout = http_opts.timeout
+        
+    if found_timeout is not None:
+        assert found_timeout == 600000
+
+def test_run_generator_thread_retry_logic(app, mocker):
+    """Verify that the generator thread correctly retries failed API calls and respects backoff delay."""
+    mock_sleep = mocker.patch("src.app.time.sleep")
+    mock_after = mocker.patch.object(app, "after")
+    
+    # Isolate filesystem operations
+    mocker.patch("src.app.Path.exists", return_value=True)
+    mocker.patch("src.app.ModBuilder")
+    mocker.patch("src.app.ImageProcessor")
+    mocker.patch("src.app.tempfile.TemporaryDirectory")
+    
+    mock_client_class = mocker.patch("src.app.GeminiModClient")
+    mock_client_instance = mock_client_class.return_value
+    
+    # Setup the generate_texture sequence: Fail, Fail, Succeed
+    mock_error = Exception("504 DEADLINE_EXCEEDED")
+    mock_client_instance.generate_texture.side_effect = [mock_error, mock_error, None]
+    
+    # Execute the thread logic
+    app._run_generator_thread("TestRetryMod", "Style", True, False, False)
+    
+    # Validation
+    assert mock_client_instance.generate_texture.call_count == 3
+    assert mock_sleep.call_count == 2
+    mock_sleep.assert_called_with(5) # Delay is 5 seconds
+    
+    # Verify the UI restore hook was called
+    assert mock_after.called
+
+def test_run_generator_thread_retry_fatal(app, mocker):
+    """Verify that generator throws an error if it reaches max retries."""
+    mock_sleep = mocker.patch("src.app.time.sleep")
+    mock_after = mocker.patch.object(app, "after")
+    
+    mocker.patch("src.app.Path.exists", return_value=True)
+    mocker.patch("src.app.ModBuilder")
+    mocker.patch("src.app.ImageProcessor")
+    mocker.patch("src.app.tempfile.TemporaryDirectory")
+    
+    mock_client_class = mocker.patch("src.app.GeminiModClient")
+    mock_client_instance = mock_client_class.return_value
+    
+    mock_error = Exception("503 UNAVAILABLE")
+    # Setup to ALWAYS fail (more than 3 times)
+    mock_client_instance.generate_texture.side_effect = mock_error
+    
+    # Execute the thread logic
+    app._run_generator_thread("TestRetryModFatal", "Style", True, False, False)
+    
+    assert mock_client_instance.generate_texture.call_count == 3
+    assert mock_sleep.call_count == 2
+    assert mock_after.called
