@@ -539,7 +539,42 @@ Do not include any other text, markdown formatting, or explanation. Just the raw
                     if not base_dds.exists():
                         raise FileNotFoundError(f"Base texture not found at {base_dds}. Please verify your game path.")
                     ImageProcessor.dds_to_png(base_dds, base_png)
-                    client.generate_texture(base_image_path=base_png, style=style, output_path=generated_d_png)
+                    
+                    # --- ДОБАВЛЕННЫЙ ЦИКЛ ВАЛИДАЦИИ (QA FEEDBACK LOOP) ---
+                    max_attempts = 3
+                    attempt = 1
+                    feedback = None
+                    is_valid = False
+
+                    while attempt <= max_attempts:
+                        self.logger.info(f"Generation attempt {attempt}/{max_attempts}...")
+                        
+                        client.generate_texture(
+                            base_image_path=base_png, 
+                            style=style, 
+                            output_path=generated_d_png,
+                            previous_feedback=feedback
+                        )
+
+                        validation_result = client.validate_texture(
+                            base_image_path=base_png,
+                            generated_image_path=generated_d_png, 
+                            style=style
+                        )
+
+                        if validation_result.is_valid:
+                            self.logger.info("✅ Texture passed QA validation!")
+                            is_valid = True
+                            break
+                        else:
+                            self.logger.warning(f"❌ Texture validation failed: {validation_result.feedback}")
+                            feedback = validation_result.feedback
+                            attempt += 1
+
+                    if not is_valid:
+                        self.logger.error(f"⚠️ Max retries ({max_attempts}) reached. Proceeding with the last generated texture, but it may contain structural flaws.")
+                    # -----------------------------------------------------
+
                     ImageProcessor.img_to_dds(generated_d_png, final_d_dds, resolution=res)
                 else:
                     if not final_d_dds.exists():

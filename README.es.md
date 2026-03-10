@@ -12,8 +12,9 @@ Una interfaz gráfica de usuario moderna para la biblioteca [Haydee AI Outfit Ge
 
 ### 📥 [Descarga la última versión de HaydeeOutfitGenerator.exe aquí](https://github.com/thegamerbay/haydee-ai-outfit-generator-gui/releases)
 
-![GUI Generate Outfit Preview](assets/gui-generate-outfit.png)
-![GUI Group Mods Preview](assets/gui-group-mods.png)
+<img src="assets/gui-generate-outfit.png" width="852" alt="GUI Generate Outfit Preview">
+<img src="assets/gui-prompt-ideas.png" width="852" alt="GUI Prompt Ideas Preview">
+<img src="assets/gui-group-mods.png" width="852" alt="GUI Group Mods Preview">
 
 ## 🖼️ Ejemplos Generados
 

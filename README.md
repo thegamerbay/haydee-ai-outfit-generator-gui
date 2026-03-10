@@ -12,8 +12,9 @@ A modern graphical user interface for the [Haydee AI Outfit Generator](https://g
 
 ### 📥 [Download the latest HaydeeOutfitGenerator.exe here](https://github.com/thegamerbay/haydee-ai-outfit-generator-gui/releases)
 
-![GUI Generate Outfit Preview](assets/gui-generate-outfit.png)
-![GUI Group Mods Preview](assets/gui-group-mods.png)
+<img src="assets/gui-generate-outfit.png" width="852" alt="GUI Generate Outfit Preview">
+<img src="assets/gui-prompt-ideas.png" width="852" alt="GUI Prompt Ideas Preview">
+<img src="assets/gui-group-mods.png" width="852" alt="GUI Group Mods Preview">
 
 ## 🖼️ Generated Examples
 
@@ -35,6 +36,7 @@ Check out what you can create! The following outfits were generated using this t
 - **Three Unique Workflows**: Seamlessly switch between generating brand new outfits via AI, getting creative inspiration for your styles, and grouping your existing mods into single multi-mods.
 - **Granular Generation Control**: Individually toggle the generation of Diffuse (Color), Specular (Material/Gloss), and Normal (3D Bump) maps to save API requests or regenerate specific parts.
 - **Customizable AI Models**: Choose exactly which Gemini AI model processes your request (e.g., `gemini-3.1-flash-image-preview` or other supported models).
+- **Quality Assurance Loop**: Automatically validates the AI-generated textures for structural flaws (like incorrect anatomy or seams) using a more advanced model, and sends feedback to the AI to re-draw it up to 3 times before saving.
 - **Network Resilience**: Built-in 10-minute SDK timeout patches and automatic 3-attempt API retry loops ensure your generations don't fail due to temporary Google API server congestion or `503/504 Deadline Exceeded` errors.
 - **No Terminal Required**: Configures all paths and handles logging automatically.
 - **Asynchronous Processing**: The UI remains responsive while the outfit is being generated via AI or while mods are being grouped.
@@ -49,6 +51,7 @@ Check out what you can create! The following outfits were generated using this t
    - Path to your **Haydee** game installation directory.
    - Your **Author Name** (Optional, applied to all generated or grouped mods).
    - Your **AI Model** (Defaults to `gemini-3.1-flash-image-preview`).
+   - Your **Validation AI Model** (Defaults to `gemini-3.1-pro-preview`).
 4. Click **Save Settings**.
 5. Choose your workflow tab:
    - **✨ Generate Outfit**: Enter a unique mod name, a descriptive style prompt, and toggle which textures you want to generate (Diffuse, Specular, or Normal) before starting.

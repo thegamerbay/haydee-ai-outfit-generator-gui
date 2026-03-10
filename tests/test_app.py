@@ -275,6 +275,7 @@ def test_run_generator_thread_success(app, mocker):
     
     # Validation
     mock_client_instance.generate_texture.assert_called_once()
+    mock_client_instance.validate_texture.assert_called_once()
     assert mock_after.called
 
 def test_run_generator_thread_failure(app, mocker):

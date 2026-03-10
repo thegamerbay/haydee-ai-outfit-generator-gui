@@ -12,8 +12,9 @@
 
 ### 📥 [ดาวน์โหลด HaydeeOutfitGenerator.exe เวอร์ชันล่าสุดได้ที่นี่](https://github.com/thegamerbay/haydee-ai-outfit-generator-gui/releases)
 
-![GUI Generate Outfit Preview](assets/gui-generate-outfit.png)
-![GUI Group Mods Preview](assets/gui-group-mods.png)
+<img src="assets/gui-generate-outfit.png" width="852" alt="GUI Generate Outfit Preview">
+<img src="assets/gui-prompt-ideas.png" width="852" alt="GUI Prompt Ideas Preview">
+<img src="assets/gui-group-mods.png" width="852" alt="GUI Group Mods Preview">
 
 ## 🖼️ ตัวอย่างที่ถูกสร้างขึ้น
 
