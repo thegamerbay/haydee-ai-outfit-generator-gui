@@ -55,8 +55,8 @@ Check out what you can create! The following outfits were generated using this t
 4. Click **Save Settings**.
 5. Choose your workflow tab:
    - **✨ Generate Outfit**: Enter a unique mod name, a descriptive style prompt, and toggle which textures you want to generate (Diffuse, Specular, or Normal) before starting.
-   - **� Prompt Ideas**: Feeling stuck? Enter a simple theme (like "Cyberpunk") and get AI-generated outfit concepts. Apply ideas directly to the generator with one click.
-   - **�📦 Group Mods**: Combine multiple existing mods into one multi-mod. Enter the new multi-mod name, the source mods to group (e.g., `red, green, blue`), and the slot category (e.g., `color`).
+   - ** Prompt Ideas**: Feeling stuck? Enter a simple theme (like "Cyberpunk") and get AI-generated outfit concepts. Apply ideas directly to the generator with one click.
+   - **📦 Group Mods**: Combine multiple existing mods into one multi-mod. Enter the new multi-mod name, the source mods to group (e.g., `red, green, blue`), and the slot category (e.g., `color`).
 6. Click **Start Generation**, **Generate Prompt Ideas**, or **Group Outfits** and watch the magic happen in the built-in console window!
 
 *(Note: The app will automatically save your settings in `AppData/Local/HaydeeOutfitGenerator/settings.json` so you don't have to enter your details every time.)*
