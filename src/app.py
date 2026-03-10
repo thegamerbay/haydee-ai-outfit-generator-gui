@@ -147,10 +147,15 @@ class HaydeeGUI(ctk.CTk):
         self.combo_res = ctk.CTkComboBox(self.left_frame, values=["4K", "2K"])
         self.combo_res.pack(fill="x", padx=20, pady=(0, 15))
 
-        # Model Name
-        ctk.CTkLabel(self.left_frame, text="AI Model:").pack(anchor="w", padx=20)
+        # Generation Model Name
+        ctk.CTkLabel(self.left_frame, text="Generation AI Model:").pack(anchor="w", padx=20)
         self.entry_model = ctk.CTkEntry(self.left_frame, placeholder_text="gemini-3.1-flash-image-preview")
-        self.entry_model.pack(fill="x", padx=20, pady=(0, 20))
+        self.entry_model.pack(fill="x", padx=20, pady=(0, 15))
+
+        # Validation Model Name
+        ctk.CTkLabel(self.left_frame, text="Validation AI Model:").pack(anchor="w", padx=20)
+        self.entry_validator_model = ctk.CTkEntry(self.left_frame, placeholder_text="gemini-3.1-pro-preview")
+        self.entry_validator_model.pack(fill="x", padx=20, pady=(0, 20))
 
         # Save Button
         self.btn_save = ctk.CTkButton(self.left_frame, text="💾 Save Settings", command=self._save_settings)
@@ -251,6 +256,7 @@ class HaydeeGUI(ctk.CTk):
         self.entry_author.insert(0, self.config_manager.config.get("author_name", ""))
         self.combo_res.set(self.config_manager.config.get("image_resolution", "4K"))
         self.entry_model.insert(0, self.config_manager.config.get("model_name", "gemini-3.1-flash-image-preview"))
+        self.entry_validator_model.insert(0, self.config_manager.config.get("validator_model", "gemini-3.1-pro-preview"))
 
     def _save_settings(self, show_success=True):
         api_key = self.entry_api_key.get().strip()
@@ -258,6 +264,7 @@ class HaydeeGUI(ctk.CTk):
         author = self.entry_author.get().strip()
         res = self.combo_res.get()
         model = self.entry_model.get().strip() or "gemini-3.1-flash-image-preview"
+        validator_model = self.entry_validator_model.get().strip() or "gemini-3.1-pro-preview"
 
         if not api_key or not haydee_path:
             messagebox.showwarning("Warning", "Please fill in both API Key and Game Path.")
@@ -268,6 +275,7 @@ class HaydeeGUI(ctk.CTk):
         self.config_manager.config["author_name"] = author
         self.config_manager.config["image_resolution"] = res
         self.config_manager.config["model_name"] = model
+        self.config_manager.config["validator_model"] = validator_model
         self.config_manager.save()
 
         if show_success:
@@ -332,23 +340,13 @@ class HaydeeGUI(ctk.CTk):
             threading.Thread(target=self._run_grouping_thread, args=(multi_name, source_mods, slot_cat, delete_sources), daemon=True).start()
 
     def _run_generator_thread(self, mod_name, style, gen_d, gen_s, gen_n):
-        def retry_api_call(func, *args, retries=3, delay=5, **kwargs):
-            for attempt in range(retries):
-                try:
-                    return func(*args, **kwargs)
-                except Exception as e:
-                    if attempt < retries - 1:
-                        self.logger.warning(f"API call failed (Attempt {attempt+1}/{retries}): {e}. Retrying in {delay} seconds...")
-                        time.sleep(delay)
-                    else:
-                        raise e
-
         try:
             api_key = self.config_manager.config["gemini_api_key"]
             haydee_path = Path(self.config_manager.config["haydee_path"])
             author = self.config_manager.config.get("author_name", "")
             res = self.config_manager.config["image_resolution"]
             model_name = self.config_manager.config.get("model_name", "gemini-3.1-flash-image-preview")
+            validator_model = self.config_manager.config.get("validator_model", "gemini-3.1-pro-preview")
             
             outfits_dir = haydee_path / "Outfits"
             base_dds = outfits_dir / "Haydee" / "Suit_D.dds"
@@ -363,14 +361,14 @@ class HaydeeGUI(ctk.CTk):
                 generated_mask = temp_path / "material_mask.png"
                 generated_n_png = temp_path / "generated_normal.png"
 
-                client = GeminiModClient(api_key=api_key, image_resolution=res, model_name=model_name)
+                client = GeminiModClient(api_key=api_key, image_resolution=res, model_name=model_name, validator_model=validator_model)
                 final_d_dds = builder.mod_dir / "Suit_D.dds"
 
                 if gen_d:
                     if not base_dds.exists():
                         raise FileNotFoundError(f"Base texture not found at {base_dds}. Please verify your game path.")
                     ImageProcessor.dds_to_png(base_dds, base_png)
-                    retry_api_call(client.generate_texture, base_image_path=base_png, style=style, output_path=generated_d_png)
+                    client.generate_texture(base_image_path=base_png, style=style, output_path=generated_d_png)
                     ImageProcessor.img_to_dds(generated_d_png, final_d_dds, resolution=res)
                 else:
                     if not final_d_dds.exists():
@@ -384,12 +382,12 @@ class HaydeeGUI(ctk.CTk):
                             ImageProcessor.dds_to_png(final_d_dds, generated_d_png)
 
                 if gen_s:
-                    retry_api_call(client.generate_material_mask, diffuse_image_path=generated_d_png, output_path=generated_mask)
+                    client.generate_material_mask(diffuse_image_path=generated_d_png, output_path=generated_mask)
                     final_s_dds = builder.mod_dir / "Suit_S.dds"
                     ImageProcessor.create_specular_map(generated_mask, final_s_dds, resolution=res)
 
                 if gen_n:
-                    retry_api_call(client.generate_normal_map, diffuse_image_path=generated_d_png, output_path=generated_n_png)
+                    client.generate_normal_map(diffuse_image_path=generated_d_png, output_path=generated_n_png)
                     final_n_dds = builder.mod_dir / "Suit_N.dds"
                     ImageProcessor.create_custom_normal_map(generated_n_png, final_n_dds, resolution=res)
 

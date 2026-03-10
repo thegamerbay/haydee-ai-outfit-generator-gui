@@ -13,7 +13,8 @@ class ConfigManager:
             "haydee_path": "",
             "author_name": "",
             "image_resolution": "4K",
-            "model_name": "gemini-3.1-flash-image-preview"
+            "model_name": "gemini-3.1-flash-image-preview",
+            "validator_model": "gemini-3.1-pro-preview"
         }
         self.load()
 

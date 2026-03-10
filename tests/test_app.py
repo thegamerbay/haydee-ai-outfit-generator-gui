@@ -10,7 +10,8 @@ def mock_config_manager():
         "haydee_path": "C:\\Test\\Path",
         "author_name": "TestAuthor",
         "image_resolution": "4K",
-        "model_name": "test_model_v1"
+        "model_name": "test_model_v1",
+        "validator_model": "gemini-3.1-pro-preview"
     }
     
     # When ConfigManager is instantiated, inject our mock config
@@ -43,6 +44,7 @@ def test_app_initialization(app):
     assert app.entry_path.get() == "C:\\Test\\Path"
     assert app.entry_author.get() == "TestAuthor"
     assert app.entry_model.get() == "test_model_v1"
+    assert app.entry_validator_model.get() == "gemini-3.1-pro-preview"
 
 def test_save_settings_validation_empty(app, mocker):
     """Verify that empty fields trigger a warning dialog."""
@@ -58,7 +60,7 @@ def test_save_settings_validation_empty(app, mocker):
     mock_messagebox.assert_called_once_with("Warning", "Please fill in both API Key and Game Path.")
 
 def test_save_settings_success(app, mocker):
-    """Verify successful saving of settings including author and model_name."""
+    """Verify successful saving of settings including author and model names."""
     mock_messagebox = mocker.patch("src.app.messagebox.showinfo")
     mock_save = mocker.patch.object(app.config_manager, "save")
     
@@ -75,6 +77,9 @@ def test_save_settings_success(app, mocker):
 
     app.entry_model.delete(0, "end")
     app.entry_model.insert(0, "gemini-4.0-pro")
+
+    app.entry_validator_model.delete(0, "end")
+    app.entry_validator_model.insert(0, "gemini-4.0-pro-validator")
     
     app._save_settings()
     
@@ -83,6 +88,7 @@ def test_save_settings_success(app, mocker):
     assert app.config_manager.config["gemini_api_key"] == "new_super_secret_key"
     assert app.config_manager.config["author_name"] == "NewAuthor"
     assert app.config_manager.config["model_name"] == "gemini-4.0-pro"
+    assert app.config_manager.config["validator_model"] == "gemini-4.0-pro-validator"
     mock_messagebox.assert_called_once_with("Success", "Settings saved successfully!")
 
 def test_start_generation_validation(app, mocker):
@@ -226,9 +232,8 @@ def test_google_genai_monkey_patch():
     if found_timeout is not None:
         assert found_timeout == 600000
 
-def test_run_generator_thread_retry_logic(app, mocker):
-    """Verify that the generator thread correctly retries failed API calls and respects backoff delay."""
-    mock_sleep = mocker.patch("src.app.time.sleep")
+def test_run_generator_thread_success(app, mocker):
+    """Verify that the generator thread calls the library correctly."""
     mock_after = mocker.patch.object(app, "after")
     
     # Isolate filesystem operations
@@ -240,24 +245,15 @@ def test_run_generator_thread_retry_logic(app, mocker):
     mock_client_class = mocker.patch("src.app.GeminiModClient")
     mock_client_instance = mock_client_class.return_value
     
-    # Setup the generate_texture sequence: Fail, Fail, Succeed
-    mock_error = Exception("504 DEADLINE_EXCEEDED")
-    mock_client_instance.generate_texture.side_effect = [mock_error, mock_error, None]
-    
     # Execute the thread logic
-    app._run_generator_thread("TestRetryMod", "Style", True, False, False)
+    app._run_generator_thread("TestMod", "Style", True, False, False)
     
     # Validation
-    assert mock_client_instance.generate_texture.call_count == 3
-    assert mock_sleep.call_count == 2
-    mock_sleep.assert_called_with(5) # Delay is 5 seconds
-    
-    # Verify the UI restore hook was called
+    mock_client_instance.generate_texture.assert_called_once()
     assert mock_after.called
 
-def test_run_generator_thread_retry_fatal(app, mocker):
-    """Verify that generator throws an error if it reaches max retries."""
-    mock_sleep = mocker.patch("src.app.time.sleep")
+def test_run_generator_thread_failure(app, mocker):
+    """Verify that generator throws an error correctly catching exceptions."""
     mock_after = mocker.patch.object(app, "after")
     
     mocker.patch("src.app.Path.exists", return_value=True)
@@ -268,13 +264,12 @@ def test_run_generator_thread_retry_fatal(app, mocker):
     mock_client_class = mocker.patch("src.app.GeminiModClient")
     mock_client_instance = mock_client_class.return_value
     
-    mock_error = Exception("503 UNAVAILABLE")
-    # Setup to ALWAYS fail (more than 3 times)
+    mock_error = Exception("API Failed")
     mock_client_instance.generate_texture.side_effect = mock_error
     
     # Execute the thread logic
-    app._run_generator_thread("TestRetryModFatal", "Style", True, False, False)
+    app._run_generator_thread("TestErrorMod", "Style", True, False, False)
     
-    assert mock_client_instance.generate_texture.call_count == 3
-    assert mock_sleep.call_count == 2
+    assert mock_client_instance.generate_texture.call_count == 1
     assert mock_after.called
+
