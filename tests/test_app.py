@@ -167,6 +167,52 @@ def test_start_generation_blocks_ui(app, mocker):
     assert app.btn_generate.cget("state") == "disabled"
     assert app.btn_group.cget("state") == "disabled"
 
+def test_start_generation_saves_prompt(app, mocker):
+    """Verify that starting generation saves or updates the prompt idea correctly."""
+    mocker.patch("src.app.threading.Thread")
+    mock_render = mocker.patch.object(app, "_render_all_prompt_cards")
+    mock_save = mocker.patch.object(app.config_manager, "save")
+    
+    app.config_manager.config["saved_prompts"] = [
+        {"name": "OldMod", "style": "OldStyle"},
+        {"name": "ExistingMod", "style": "ExistingStyle"}
+    ]
+    
+    # First test: Add a completely new prompt
+    app.entry_mod_name.delete(0, "end")
+    app.entry_mod_name.insert(0, "NewMod")
+    app.textbox_style.delete("1.0", "end")
+    app.textbox_style.insert("1.0", "NewStyle")
+    app.check_gen_d.select()
+    
+    # Needs to return True for _prepare_for_task
+    # mock_save is patched so it won't actually save, but config is in memory
+    app._start_generation()
+    
+    assert mock_save.called
+    assert len(app.config_manager.config["saved_prompts"]) == 3
+    assert app.config_manager.config["saved_prompts"][0] == {"name": "NewMod", "style": "NewStyle"}
+    mock_render.assert_called_with(new_indexes=[0])
+    
+    mock_save.reset_mock()
+    mock_render.reset_mock()
+
+    # Second test: Update an existing prompt (ExistingMod)
+    app.entry_mod_name.delete(0, "end")
+    app.entry_mod_name.insert(0, "ExistingMod")
+    app.textbox_style.delete("1.0", "end")
+    app.textbox_style.insert("1.0", "UpdatedStyle")
+    
+    app._start_generation()
+    
+    assert mock_save.called
+    assert len(app.config_manager.config["saved_prompts"]) == 3
+    assert app.config_manager.config["saved_prompts"][0] == {"name": "ExistingMod", "style": "UpdatedStyle"}
+    # The old ExistingMod should have been removed from index 2
+    assert app.config_manager.config["saved_prompts"][1] == {"name": "NewMod", "style": "NewStyle"}
+    assert app.config_manager.config["saved_prompts"][2] == {"name": "OldMod", "style": "OldStyle"}
+    mock_render.assert_called_with(new_indexes=[0])
+
 def test_start_grouping_blocks_ui(app, mocker):
     """Verify that starting grouping blocks the UI elements."""
     mock_thread = mocker.patch("src.app.threading.Thread")

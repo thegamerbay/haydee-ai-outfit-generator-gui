@@ -415,6 +415,23 @@ class HaydeeGUI(ctk.CTk):
             return
         
         if self._prepare_for_task():
+            # Save or update the prompt idea
+            prompts = self.config_manager.config.get("saved_prompts", [])
+            existing_idx = next((i for i, p in enumerate(prompts) if p.get("name") == mod_name), None)
+            
+            if existing_idx is not None:
+                prompts.pop(existing_idx)
+                
+            prompts.insert(0, {"name": mod_name, "style": style})
+            self.config_manager.config["saved_prompts"] = prompts
+            self.config_manager.save()
+            
+            # Update the Prompt Ideas UI
+            try:
+                self._render_all_prompt_cards(new_indexes=[0])
+            except Exception as e:
+                self.logger.warning(f"Failed to update prompt cards UI: {e}")
+
             threading.Thread(
                 target=self._run_generator_thread, 
                 args=(mod_name, style, gen_d, gen_s, gen_n), 
