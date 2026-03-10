@@ -1,6 +1,8 @@
 import threading
 import logging
 import tempfile
+import json
+import re
 from pathlib import Path
 import webbrowser
 import customtkinter as ctk
@@ -179,9 +181,11 @@ class HaydeeGUI(ctk.CTk):
         self.tabview.grid(row=0, column=0, padx=20, pady=(10, 10), sticky="nsew")
         
         self.tab_gen = self.tabview.add("✨ Generate Outfit")
+        self.tab_prompts = self.tabview.add("💡 Prompt Ideas")
         self.tab_group = self.tabview.add("📦 Group Mods")
 
         self._build_generate_tab()
+        self._build_prompts_tab()
         self._build_group_tab()
 
         # Progress bar (hidden by default)
@@ -222,6 +226,83 @@ class HaydeeGUI(ctk.CTk):
         self.btn_generate = ctk.CTkButton(self.tab_gen, text="Start Generation", height=40, font=ctk.CTkFont(weight="bold"), command=self._start_generation)
         self.btn_generate.grid(row=5, column=0, pady=10)
 
+    def _build_prompts_tab(self):
+        self.tab_prompts.grid_columnconfigure(0, weight=1)
+        self.tab_prompts.grid_rowconfigure(3, weight=1)
+
+        ctk.CTkLabel(self.tab_prompts, text="Enter a theme or concept (e.g., 'Lollipop and Strawberry'):").grid(row=0, column=0, sticky="w", padx=20, pady=(10, 0))
+        
+        self.entry_theme = ctk.CTkEntry(self.tab_prompts, placeholder_text="Describe your desired style...")
+        self.entry_theme.grid(row=1, column=0, sticky="ew", padx=20, pady=(0, 10))
+
+        self.btn_gen_prompts = ctk.CTkButton(self.tab_prompts, text="💡 Generate Prompt Ideas", height=32, command=self._start_prompt_generation)
+        self.btn_gen_prompts.grid(row=2, column=0, pady=(0, 10))
+
+        # Scrollable area for resulting idea cards
+        self.prompts_scroll_frame = ctk.CTkScrollableFrame(self.tab_prompts, fg_color="transparent")
+        self.prompts_scroll_frame.grid(row=3, column=0, sticky="nsew", padx=10, pady=(0, 10))
+        self.prompts_scroll_frame.grid_columnconfigure(0, weight=1)
+
+    def _render_all_prompt_cards(self, new_indexes=None):
+        if new_indexes is None:
+            new_indexes = []
+        for widget in self.prompts_scroll_frame.winfo_children():
+            widget.destroy()
+        
+        prompts = self.config_manager.config.get("saved_prompts", [])
+        for idx, prompt_data in enumerate(prompts):
+            self._create_card_widget(idx, prompt_data.get("name", "Unknown"), prompt_data.get("style", ""), is_new=(idx in new_indexes))
+
+    def _create_card_widget(self, index, name, style, is_new=False):
+        # Card Frame
+        fg_color = "#2E3B4E" if is_new else "#2A2D2E"
+        border_color = "#3A86FF" if is_new else "#3E3E3E"
+        border_width = 2 if is_new else 1
+        
+        card = ctk.CTkFrame(self.prompts_scroll_frame, fg_color=fg_color, border_width=border_width, border_color=border_color, corner_radius=10)
+        card.pack(fill="x", padx=5, pady=5)
+        card.grid_columnconfigure(0, weight=1)
+
+        # Header: Name + Badge New
+        header_frame = ctk.CTkFrame(card, fg_color="transparent")
+        header_frame.grid(row=0, column=0, sticky="ew", padx=10, pady=(10, 0))
+        
+        lbl_name = ctk.CTkLabel(header_frame, text=name, font=ctk.CTkFont(size=16, weight="bold"), text_color="#A9D6E5")
+        lbl_name.pack(side="left")
+        
+        if is_new:
+            badge = ctk.CTkLabel(header_frame, text=" NEW ", font=ctk.CTkFont(size=10, weight="bold"), fg_color="#E63946", text_color="white", corner_radius=5)
+            badge.pack(side="left", padx=10)
+            
+        btn_del = ctk.CTkButton(header_frame, text="🗑️ Delete", width=60, height=24, fg_color="transparent", hover_color="#E63946", border_width=1, border_color="#E63946", text_color="#E63946", command=lambda idx=index: self._delete_prompt(idx))
+        btn_del.pack(side="right")
+        
+        # Style Textbox (readonly)
+        tb_style = ctk.CTkTextbox(card, height=60, wrap="word", fg_color="transparent")
+        tb_style.grid(row=1, column=0, sticky="ew", padx=10, pady=(5, 5))
+        tb_style.insert("1.0", style)
+        tb_style.configure(state="disabled")
+        
+        # Apply button
+        btn_apply = ctk.CTkButton(card, text="✨ Apply to Generator", fg_color="#1F6AA5", hover_color="#144870", command=lambda n=name, s=style: self._apply_prompt(n, s))
+        btn_apply.grid(row=2, column=0, sticky="e", padx=10, pady=(0, 10))
+
+    def _delete_prompt(self, index):
+        prompts = self.config_manager.config.get("saved_prompts", [])
+        if 0 <= index < len(prompts):
+            del prompts[index]
+            self.config_manager.config["saved_prompts"] = prompts
+            self.config_manager.save()
+            self._render_all_prompt_cards()
+
+    def _apply_prompt(self, name, style):
+        self.tabview.set("✨ Generate Outfit")
+        self.entry_mod_name.delete(0, "end")
+        self.entry_mod_name.insert(0, name)
+        self.textbox_style.delete("1.0", "end")
+        self.textbox_style.insert("1.0", style)
+        self.logger.info(f"Applied prompt idea '{name}' to generator.")
+
     def _build_group_tab(self):
         self.tab_group.grid_columnconfigure(0, weight=1)
 
@@ -257,6 +338,9 @@ class HaydeeGUI(ctk.CTk):
         self.combo_res.set(self.config_manager.config.get("image_resolution", "4K"))
         self.entry_model.insert(0, self.config_manager.config.get("model_name", "gemini-3.1-flash-image-preview"))
         self.entry_validator_model.insert(0, self.config_manager.config.get("validator_model", "gemini-3.1-pro-preview"))
+        
+        # Load Prompt Ideas
+        self._render_all_prompt_cards()
 
     def _save_settings(self, show_success=True):
         api_key = self.entry_api_key.get().strip()
@@ -269,6 +353,15 @@ class HaydeeGUI(ctk.CTk):
         if not api_key or not haydee_path:
             messagebox.showwarning("Warning", "Please fill in both API Key and Game Path.")
             return
+
+        # Update UI to reflect assigned defaults
+        if not self.entry_model.get().strip():
+            self.entry_model.delete(0, "end")
+            self.entry_model.insert(0, model)
+            
+        if not self.entry_validator_model.get().strip():
+            self.entry_validator_model.delete(0, "end")
+            self.entry_validator_model.insert(0, validator_model)
 
         self.config_manager.config["gemini_api_key"] = api_key
         self.config_manager.config["haydee_path"] = haydee_path
@@ -289,6 +382,8 @@ class HaydeeGUI(ctk.CTk):
 
         self.btn_generate.configure(state="disabled")
         self.btn_group.configure(state="disabled")
+        if hasattr(self, 'btn_gen_prompts'):
+            self.btn_gen_prompts.configure(state="disabled")
         self.tabview.configure(state="disabled")
         
         self.progress_bar.grid(row=1, column=0, sticky="ew", padx=20, pady=(0, 5))
@@ -325,6 +420,82 @@ class HaydeeGUI(ctk.CTk):
                 args=(mod_name, style, gen_d, gen_s, gen_n), 
                 daemon=True
             ).start()
+
+    def _start_prompt_generation(self):
+        theme = self.entry_theme.get().strip()
+        if not theme:
+            messagebox.showerror("Error", "Please enter a theme or concept first.")
+            return
+
+        if self._prepare_for_task():
+            threading.Thread(
+                target=self._run_prompt_thread,
+                args=(theme,),
+                daemon=True
+            ).start()
+
+    def _run_prompt_thread(self, theme):
+        try:
+            api_key = self.config_manager.config.get("gemini_api_key", "")
+            model_name = self.config_manager.config.get("validator_model", "gemini-3.1-pro-preview")
+            
+            if not api_key:
+                raise ValueError("API Key is missing.")
+
+            self.logger.info(f"Generating prompt ideas for theme: '{theme}' using {model_name}...")
+            
+            client = genai.Client(api_key=api_key)
+            
+            system_instruction = """You are an expert prompt engineer for an AI texture generator modifying a biomechanical female character named Haydee.
+Her original suit features synthetic skin, mechanical joints, and glossy armor plates.
+Generate 3 distinct, highly detailed, and creative outfit concepts based on the user's theme.
+Focus on vivid colors, specific material textures (e.g., glossy plastic, brushed metal, matte rubber, glowing LEDs), and distinct patterns.
+Return the result STRICTLY as a JSON array of objects. 
+Each object must have exactly two keys: 'name' (a short PascalCase string for the mod name without spaces, e.g., 'CandyPop') and 'style' (a detailed text prompt for the AI image generator, e.g., 'bright colorful lollipop candy theme, glossy plastic armor plates...').
+Do not include any other text, markdown formatting, or explanation. Just the raw JSON array."""
+
+            prompt_text = f"{system_instruction}\n\nUser Theme: {theme}"
+
+            response = client.models.generate_content(
+                model=model_name,
+                contents=prompt_text,
+            )
+            
+            response_text = response.text
+            
+            # Clean up potential markdown formatting block injected by LLM
+            if response_text.startswith("```"):
+                response_text = re.sub(r"^```(?:json)?\n|\n```$", "", response_text.strip(), flags=re.MULTILINE)
+            
+            try:
+                ideas = json.loads(response_text)
+            except json.JSONDecodeError as e:
+                self.logger.error(f"Failed to parse LLM response: {response_text}")
+                raise ValueError(f"AI returned invalid JSON.")
+                
+            if not isinstance(ideas, list):
+                raise ValueError("AI did not return a JSON array.")
+                
+            self.logger.info(f"Successfully generated {len(ideas)} ideas.")
+            self.after(0, lambda: self._handle_new_ideas(ideas))
+            
+        except Exception as e:
+            self.logger.error(f"Prompt generation failed: {e}")
+            self.after(0, lambda err=str(e): messagebox.showerror("Generation Error", err))
+        finally:
+            self.after(0, self._restore_ui)
+
+    def _handle_new_ideas(self, ideas):
+        prompts = self.config_manager.config.get("saved_prompts", [])
+        valid_ideas = [i for i in ideas if "name" in i and "style" in i]
+        
+        prompts = valid_ideas + prompts
+        self.config_manager.config["saved_prompts"] = prompts
+        self.config_manager.save()
+        
+        new_indexes = list(range(len(valid_ideas)))
+        self._render_all_prompt_cards(new_indexes=new_indexes)
+        self.entry_theme.delete(0, "end")
 
     def _start_grouping(self):
         multi_name = self.entry_multi_name.get().strip()
@@ -446,4 +617,6 @@ class HaydeeGUI(ctk.CTk):
         self.progress_bar.grid_forget()
         self.btn_generate.configure(state="normal")
         self.btn_group.configure(state="normal")
+        if hasattr(self, 'btn_gen_prompts'):
+            self.btn_gen_prompts.configure(state="normal")
         self.tabview.configure(state="normal")

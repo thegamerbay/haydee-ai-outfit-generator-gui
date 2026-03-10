@@ -32,7 +32,7 @@ Check out what you can create! The following outfits were generated using this t
 ## ✨ Features
 
 - **Modern Dark Interface**: Built with `CustomTkinter` for a sleek, game-themed appearance.
-- **Two Unique Workflows**: Seamlessly switch between generating brand new outfits via AI and grouping your existing mods into single multi-mods.
+- **Three Unique Workflows**: Seamlessly switch between generating brand new outfits via AI, getting creative inspiration for your styles, and grouping your existing mods into single multi-mods.
 - **Granular Generation Control**: Individually toggle the generation of Diffuse (Color), Specular (Material/Gloss), and Normal (3D Bump) maps to save API requests or regenerate specific parts.
 - **Customizable AI Models**: Choose exactly which Gemini AI model processes your request (e.g., `gemini-3.1-flash-image-preview` or other supported models).
 - **Network Resilience**: Built-in 10-minute SDK timeout patches and automatic 3-attempt API retry loops ensure your generations don't fail due to temporary Google API server congestion or `503/504 Deadline Exceeded` errors.
@@ -52,8 +52,9 @@ Check out what you can create! The following outfits were generated using this t
 4. Click **Save Settings**.
 5. Choose your workflow tab:
    - **✨ Generate Outfit**: Enter a unique mod name, a descriptive style prompt, and toggle which textures you want to generate (Diffuse, Specular, or Normal) before starting.
-   - **📦 Group Mods**: Combine multiple existing mods into one multi-mod. Enter the new multi-mod name, the source mods to group (e.g., `red, green, blue`), and the slot category (e.g., `color`).
-6. Click **Start Generation** or **Group Outfits** and watch the magic happen in the built-in console window!
+   - **� Prompt Ideas**: Feeling stuck? Enter a simple theme (like "Cyberpunk") and get AI-generated outfit concepts. Apply ideas directly to the generator with one click.
+   - **�📦 Group Mods**: Combine multiple existing mods into one multi-mod. Enter the new multi-mod name, the source mods to group (e.g., `red, green, blue`), and the slot category (e.g., `color`).
+6. Click **Start Generation**, **Generate Prompt Ideas**, or **Group Outfits** and watch the magic happen in the built-in console window!
 
 *(Note: The app will automatically save your settings in `AppData/Local/HaydeeOutfitGenerator/settings.json` so you don't have to enter your details every time.)*
 

@@ -14,7 +14,8 @@ class ConfigManager:
             "author_name": "",
             "image_resolution": "4K",
             "model_name": "gemini-3.1-flash-image-preview",
-            "validator_model": "gemini-3.1-pro-preview"
+            "validator_model": "gemini-3.1-pro-preview",
+            "saved_prompts": []
         }
         self.load()
 

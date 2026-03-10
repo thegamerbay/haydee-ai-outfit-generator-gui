@@ -91,6 +91,31 @@ def test_save_settings_success(app, mocker):
     assert app.config_manager.config["validator_model"] == "gemini-4.0-pro-validator"
     mock_messagebox.assert_called_once_with("Success", "Settings saved successfully!")
 
+def test_save_settings_defaults_autofill(app, mocker):
+    """Verify that empty model fields are repopulated with their defaults in the UI."""
+    mocker.patch("src.app.messagebox.showinfo")
+    mocker.patch.object(app.config_manager, "save")
+    
+    # Fill required fields
+    app.entry_path.delete(0, "end")
+    app.entry_path.insert(0, "C:\\Test\\Path")
+    app.entry_api_key.delete(0, "end")
+    app.entry_api_key.insert(0, "test_key_defaults")
+    
+    # Leave model fields completely empty
+    app.entry_model.delete(0, "end")
+    app.entry_validator_model.delete(0, "end")
+    
+    app._save_settings()
+    
+    # Check that defaults were written back to the UI widgets
+    assert app.entry_model.get() == "gemini-3.1-flash-image-preview"
+    assert app.entry_validator_model.get() == "gemini-3.1-pro-preview"
+    
+    # Check that defaults were written to config memory
+    assert app.config_manager.config["model_name"] == "gemini-3.1-flash-image-preview"
+    assert app.config_manager.config["validator_model"] == "gemini-3.1-pro-preview"
+
 def test_start_generation_validation(app, mocker):
     """Verify validation logic for start_generation with various skip checkboxes."""
     mock_messagebox_error = mocker.patch("src.app.messagebox.showerror")
@@ -273,3 +298,105 @@ def test_run_generator_thread_failure(app, mocker):
     assert mock_client_instance.generate_texture.call_count == 1
     assert mock_after.called
 
+def test_start_prompt_generation_validation(app, mocker):
+    """Verify validation logic for start_prompt_generation."""
+    mock_messagebox_error = mocker.patch("src.app.messagebox.showerror")
+
+    # Clear theme
+    app.entry_theme.delete(0, "end")
+    app._start_prompt_generation()
+    mock_messagebox_error.assert_called_with("Error", "Please enter a theme or concept first.")
+
+def test_start_prompt_generation_blocks_ui(app, mocker):
+    """Verify that starting prompt generation blocks the UI elements."""
+    mock_thread = mocker.patch("src.app.threading.Thread")
+    
+    # Switch to prompts tab logically and fill field
+    app.entry_theme.insert(0, "Cyberpunk")
+    
+    app._start_prompt_generation()
+    
+    # Check that buttons are disabled
+    assert app.btn_gen_prompts.cget("state") == "disabled"
+    assert app.btn_generate.cget("state") == "disabled"
+    assert app.btn_group.cget("state") == "disabled"
+    assert mock_thread.called
+
+def test_run_prompt_thread_success(app, mocker):
+    """Verify that the prompt generator thread queries Gemini and parses the response successfully."""
+    mock_after = mocker.patch.object(app, "after")
+    
+    mock_client_class = mocker.patch("src.app.genai.Client")
+    mock_client_instance = mock_client_class.return_value
+    mock_response = mocker.Mock()
+    mock_response.text = '```json\n[{"name": "CyberNeon", "style": "Glowing neon lights"}]\n```'
+    mock_client_instance.models.generate_content.return_value = mock_response
+    
+    app._run_prompt_thread("Cyberpunk")
+    
+    assert mock_client_instance.models.generate_content.called
+    assert mock_after.called
+
+def test_run_prompt_thread_failure(app, mocker):
+    """Verify that prompt generator catches JSON parsing or API errors correctly."""
+    mock_after = mocker.patch.object(app, "after")
+    mock_logger = mocker.patch.object(app, "logger")
+    
+    mock_client_class = mocker.patch("src.app.genai.Client")
+    mock_client_instance = mock_client_class.return_value
+    mock_response = mocker.Mock()
+    mock_response.text = 'This is not JSON'
+    mock_client_instance.models.generate_content.return_value = mock_response
+    
+    app._run_prompt_thread("Cyberpunk")
+    
+    assert mock_client_instance.models.generate_content.called
+    assert mock_logger.error.called
+    assert mock_after.called
+
+def test_handle_new_ideas(app, mocker):
+    """Verify that new ideas are appended to saved_prompts and UI is re-rendered."""
+    mock_render = mocker.patch.object(app, "_render_all_prompt_cards")
+    mock_save = mocker.patch.object(app.config_manager, "save")
+    
+    app.config_manager.config["saved_prompts"] = []
+    
+    ideas = [
+        {"name": "Test1", "style": "Style1"},
+        {"name": "Test2", "style": "Style2"}
+    ]
+    
+    app._handle_new_ideas(ideas)
+    
+    assert mock_save.called
+    assert len(app.config_manager.config["saved_prompts"]) == 2
+    assert app.config_manager.config["saved_prompts"][0]["name"] == "Test1"
+    mock_render.assert_called_once_with(new_indexes=[0, 1])
+
+def test_delete_prompt(app, mocker):
+    """Verify that deleting a prompt removes it from saved_prompts and re-renders UI."""
+    mock_render = mocker.patch.object(app, "_render_all_prompt_cards")
+    mock_save = mocker.patch.object(app.config_manager, "save")
+    
+    app.config_manager.config["saved_prompts"] = [
+        {"name": "Test1", "style": "Style1"},
+        {"name": "Test2", "style": "Style2"}
+    ]
+    
+    app._delete_prompt(0)
+    
+    assert mock_save.called
+    assert len(app.config_manager.config["saved_prompts"]) == 1
+    assert app.config_manager.config["saved_prompts"][0]["name"] == "Test2"
+    assert mock_render.called
+
+def test_apply_prompt(app):
+    """Verify that applying a prompt updates the generation tab fields."""
+    app.entry_mod_name.insert(0, "OldName")
+    app.textbox_style.insert("1.0", "OldStyle")
+    
+    app._apply_prompt("NewName", "NewStyle")
+    
+    assert app.tabview.get() == "✨ Generate Outfit"
+    assert app.entry_mod_name.get() == "NewName"
+    assert app.textbox_style.get("1.0", "end-1c") == "NewStyle"
